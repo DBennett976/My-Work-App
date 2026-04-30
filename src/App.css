@@ -3,30 +3,34 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html {
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
   background: #121212;
+  overflow: hidden;
 }
 
 body {
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     Arial, sans-serif;
-  background: #eef1f5;
   color: #111;
-  overscroll-behavior: none;
 }
 
 .app {
-  .app {
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
   max-width: 760px;
-  margin: auto;
-  padding: 24px 16px calc(env(safe-area-inset-bottom) + 24px);
-  min-height: 100vh;
-}
-  background: #eef1f5;
+  margin: 0 auto;
+  padding: 28px 16px calc(env(safe-area-inset-bottom) + 28px);
+  background: linear-gradient(180deg, #f5f6fa 0%, #e9edf3 100%);
 }
 
-.dark {
+.app.dark {
   background: #121212;
   color: #f5f5f5;
 }
@@ -37,38 +41,50 @@ body {
   z-index: 20;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0 18px;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0 18px;
   margin-bottom: 8px;
   background: inherit;
 }
 
+.top-bar::after {
+  content: "";
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  bottom: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .top-bar h1 {
   margin: 0;
-  font-size: 40px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -1.4px;
+  font-size: 42px;
+  line-height: 0.95;
+  font-weight: 900;
+  letter-spacing: -1.7px;
 }
 
 .top-bar p {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 18px;
-  color: #667085;
+  color: #6b7280;
 }
 
 .dark .top-bar p {
-  color: #b8b8b8;
+  color: #b7b7b7;
 }
 
 .card,
 .repair-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   padding: 18px;
-  margin-bottom: 16px;
-  border-radius: 28px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  margin-bottom: 18px;
+  border-radius: 30px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.12);
 }
 
 .dark .card,
@@ -79,7 +95,7 @@ body {
 
 label {
   display: block;
-  margin-top: 18px;
+  margin-top: 20px;
   font-size: 17px;
   font-weight: 800;
   text-align: center;
@@ -89,10 +105,10 @@ input,
 select,
 textarea {
   width: 100%;
-  margin-top: 8px;
-  padding: 16px;
+  margin-top: 9px;
+  padding: 17px;
   font-size: 18px;
-  border-radius: 18px;
+  border-radius: 19px;
   border: 1px solid #d0d5dd;
   background: #f9fafb;
   color: #111;
@@ -103,56 +119,52 @@ textarea {
 .dark input,
 .dark select,
 .dark textarea {
-  background: #2b2b2b;
+  background: #2b2b2d;
   color: white;
-  border: 1px solid #555;
+  border: 1px solid #545458;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   border-color: #0a84ff;
-  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.22);
 }
 
 textarea {
-  min-height: 135px;
+  min-height: 140px;
   resize: vertical;
 }
 
 button {
   width: 100%;
-  margin-top: 14px;
-  padding: 17px;
+  margin-top: 15px;
+  padding: 18px;
   font-size: 18px;
-  border-radius: 20px;
+  border-radius: 22px;
   border: none;
-  font-weight: 800;
+  font-weight: 850;
   cursor: pointer;
   background: #0a84ff;
   color: white;
 }
 
 button:active {
-  transform: scale(0.98);
+  transform: scale(0.975);
+  filter: brightness(0.96);
 }
 
 .scan-btn {
   font-size: 22px;
   padding: 22px;
-  border-radius: 24px;
-  background: #f2f2f7;
-  color: #111;
-}
-
-.dark .scan-btn {
+  border-radius: 25px;
   background: #f2f2f7;
   color: #111;
 }
 
 .save-btn {
   background: #30d158;
-  color: #071b0d;
+  color: #061b0c;
 }
 
 .delete {
@@ -168,17 +180,14 @@ button:active {
   border-radius: 18px;
   background: #f2f2f7;
   color: #111;
-}
-
-.dark .small-btn {
-  background: #f2f2f7;
-  color: #111;
+  flex-shrink: 0;
 }
 
 .menu-toggle {
   font-size: 17px;
   text-align: left;
   background: #3a3a3c;
+  color: white;
 }
 
 .dropdown {
@@ -192,7 +201,7 @@ button:active {
   margin-top: 18px;
   width: 100%;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 24px;
 }
 
 .scan-message {
@@ -205,7 +214,7 @@ button:active {
 .previous-box {
   margin-top: 18px;
   padding: 16px;
-  border-radius: 22px;
+  border-radius: 24px;
   background: #fff3cd;
   border: 1px solid #ffdf7e;
   color: #111;
@@ -237,7 +246,7 @@ button:active {
   width: 100%;
   max-height: 350px;
   object-fit: cover;
-  border-radius: 22px;
+  border-radius: 24px;
   margin-top: 14px;
 }
 
