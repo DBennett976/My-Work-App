@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import "./App.css";
 
+const STORAGE_KEY = "repairLogs";
+const DARK_KEY = "darkMode";
 const DB_NAME = "RepairLogPhotoDB";
 const DB_VERSION = 1;
 const PHOTO_STORE = "photos";
@@ -26,10 +28,10 @@ async function savePhotoToDB(id, photoData) {
   const db = await openPhotoDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(PHOTO_STORE, "readwrite");
-    transaction.objectStore(PHOTO_STORE).put(photoData, id);
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
+    const tx = db.transaction(PHOTO_STORE, "readwrite");
+    tx.objectStore(PHOTO_STORE).put(photoData, id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -51,11 +53,39 @@ async function deletePhotoFromDB(id) {
   const db = await openPhotoDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(PHOTO_STORE, "readwrite");
-    transaction.objectStore(PHOTO_STORE).delete(id);
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
+    const tx = db.transaction(PHOTO_STORE, "readwrite");
+    tx.objectStore(PHOTO_STORE).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
   });
+}
+
+function safeJSONParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function makeId() {
+  return crypto.randomUUID();
+}
+
+function exportDownload(data, filename, type = "application/json") {
+  const blob = new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function formatNow() {
+  return new Date().toLocaleString();
 }
 
 export default function App() {
@@ -63,27 +93,35 @@ export default function App() {
   const [photoMap, setPhotoMap] = useState({});
   const [loaded, setLoaded] = useState(false);
 
-  const [barcode, setBarcode] = useState("");
-  const [property, setProperty] = useState("");
-  const [unit, setUnit] = useState("");
-  const [machineType, setMachineType] = useState("Washer");
-  const [notes, setNotes] = useState("");
+  const [form, setForm] = useState({
+    barcode: "",
+    property: "",
+    unit: "",
+    machineType: "Washer",
+    notes: "",
+  });
+
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoFileData, setPhotoFileData] = useState("");
   const [search, setSearch] = useState("");
   const [darkMode, setDarkMode] = useState(true);
+
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
-  const [showBackupMenu, setShowBackupMenu] = useState(false);
+
   const [showHistoryPage, setShowHistoryPage] = useState(false);
+  const [showBackupMenu, setShowBackupMenu] = useState(false);
 
   const [selectedRepair, setSelectedRepair] = useState(null);
   const [editingRepair, setEditingRepair] = useState(null);
-  const [editBarcode, setEditBarcode] = useState("");
-  const [editProperty, setEditProperty] = useState("");
-  const [editUnit, setEditUnit] = useState("");
-  const [editMachineType, setEditMachineType] = useState("Washer");
-  const [editNotes, setEditNotes] = useState("");
+
+  const [editForm, setEditForm] = useState({
+    barcode: "",
+    property: "",
+    unit: "",
+    machineType: "Washer",
+    notes: "",
+  });
 
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
@@ -91,65 +129,64 @@ export default function App() {
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("repairLogs");
-    const savedDark = localStorage.getItem("darkMode");
-
-    if (saved) setRepairs(JSON.parse(saved));
-    if (savedDark) setDarkMode(JSON.parse(savedDark));
-
+    setRepairs(safeJSONParse(localStorage.getItem(STORAGE_KEY), []));
+    setDarkMode(safeJSONParse(localStorage.getItem(DARK_KEY), true));
     setLoaded(true);
   }, []);
 
   useEffect(() => {
     if (loaded) {
-      const repairsWithoutPhotos = repairs.map(({ photo, ...repair }) => repair);
-      localStorage.setItem("repairLogs", JSON.stringify(repairsWithoutPhotos));
+      const cleanRepairs = repairs.map(({ photo, ...repair }) => repair);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanRepairs));
     }
   }, [repairs, loaded]);
 
   useEffect(() => {
-    localStorage.setItem("darkMode", JSON.stringify(darkMode));
+    localStorage.setItem(DARK_KEY, JSON.stringify(darkMode));
   }, [darkMode]);
 
   useEffect(() => {
     async function loadPhotos() {
-      const nextPhotoMap = {};
+      const nextMap = {};
 
       for (const repair of repairs) {
         if (repair.photoId) {
           const photo = await getPhotoFromDB(repair.photoId);
-          if (photo) nextPhotoMap[repair.id] = photo;
+          if (photo) nextMap[repair.id] = photo;
         }
       }
 
-      setPhotoMap(nextPhotoMap);
+      setPhotoMap(nextMap);
     }
 
-    repairs.length > 0 ? loadPhotos() : setPhotoMap({});
+    repairs.length ? loadPhotos() : setPhotoMap({});
   }, [repairs]);
 
   const previousRepairs = useMemo(() => {
-    const currentBarcode = barcode.trim().toLowerCase();
+    const currentBarcode = form.barcode.trim().toLowerCase();
     if (!currentBarcode) return [];
 
     return repairs.filter(
       (repair) => repair.barcode?.trim().toLowerCase() === currentBarcode
     );
-  }, [barcode, repairs]);
+  }, [form.barcode, repairs]);
 
   useEffect(() => {
-    if (previousRepairs.length > 0 && barcode.trim()) {
-      const lastRepair = previousRepairs[0];
+    if (!form.barcode.trim() || previousRepairs.length === 0) return;
 
-      if (!property && lastRepair.property) setProperty(lastRepair.property);
-      if (!unit && lastRepair.unit) setUnit(lastRepair.unit);
-      if (lastRepair.machineType) setMachineType(lastRepair.machineType);
-    }
-  }, [barcode, previousRepairs, property, unit]);
+    const last = previousRepairs[0];
+
+    setForm((current) => ({
+      ...current,
+      property: current.property || last.property || "",
+      unit: current.unit || last.unit || "",
+      machineType: last.machineType || current.machineType,
+    }));
+  }, [form.barcode, previousRepairs]);
 
   const filteredRepairs = useMemo(() => {
-    const text = search.toLowerCase().trim();
-    if (!text) return repairs;
+    const query = search.toLowerCase().trim();
+    if (!query) return repairs;
 
     return repairs.filter((repair) =>
       [
@@ -159,19 +196,30 @@ export default function App() {
         repair.machineType,
         repair.notes,
         repair.date,
+        repair.editedDate,
       ]
         .join(" ")
         .toLowerCase()
-        .includes(text)
+        .includes(query)
     );
   }, [repairs, search]);
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateEditForm(field, value) {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  }
 
   async function stopScanner() {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch {}
+      } catch {
+        // Ignore scanner shutdown errors.
+      }
 
       scannerRef.current = null;
     }
@@ -213,7 +261,7 @@ export default function App() {
             ],
           },
           async (decodedText) => {
-            setBarcode(decodedText);
+            updateForm("barcode", decodedText);
             setScanMessage("Scanned successfully!");
 
             if (navigator.vibrate) navigator.vibrate(150);
@@ -221,7 +269,9 @@ export default function App() {
             try {
               await scanner.stop();
               await scanner.clear();
-            } catch {}
+            } catch {
+              // Ignore scanner shutdown errors.
+            }
 
             scannerRef.current = null;
 
@@ -240,82 +290,94 @@ export default function App() {
     }, 100);
   }
 
+  function clearForm() {
+    setForm({
+      barcode: "",
+      property: "",
+      unit: "",
+      machineType: "Washer",
+      notes: "",
+    });
+    setPhotoPreview("");
+    setPhotoFileData("");
+  }
+
   async function saveRepair() {
-    if (!barcode.trim()) {
+    if (!form.barcode.trim()) {
       alert("Scan or enter a barcode first.");
       return;
     }
 
-    const id = crypto.randomUUID();
+    const id = makeId();
     const photoId = photoFileData ? `photo-${id}` : "";
 
     if (photoFileData) await savePhotoToDB(photoId, photoFileData);
 
     const entry = {
       id,
-      barcode: barcode.trim(),
-      property: property.trim(),
-      unit: unit.trim(),
-      machineType,
-      notes: notes.trim(),
+      barcode: form.barcode.trim(),
+      property: form.property.trim(),
+      unit: form.unit.trim(),
+      machineType: form.machineType,
+      notes: form.notes.trim(),
       photoId,
-      date: new Date().toLocaleString(),
+      date: formatNow(),
     };
 
-    setRepairs([entry, ...repairs]);
+    setRepairs((current) => [entry, ...current]);
 
     if (photoFileData) {
-      setPhotoMap({ ...photoMap, [id]: photoFileData });
+      setPhotoMap((current) => ({ ...current, [id]: photoFileData }));
     }
 
-    setBarcode("");
-    setProperty("");
-    setUnit("");
-    setMachineType("Washer");
-    setNotes("");
-    setPhotoPreview("");
-    setPhotoFileData("");
+    clearForm();
   }
 
   async function deleteRepair(repair) {
+    if (!confirm("Delete this repair?")) return;
+
     if (repair.photoId) await deletePhotoFromDB(repair.photoId);
 
-    setRepairs(repairs.filter((item) => item.id !== repair.id));
+    setRepairs((current) => current.filter((item) => item.id !== repair.id));
 
-    const updatedPhotoMap = { ...photoMap };
-    delete updatedPhotoMap[repair.id];
-    setPhotoMap(updatedPhotoMap);
+    setPhotoMap((current) => {
+      const copy = { ...current };
+      delete copy[repair.id];
+      return copy;
+    });
 
     setSelectedRepair(null);
   }
 
   function openEdit(repair) {
     setEditingRepair(repair);
-    setEditBarcode(repair.barcode || "");
-    setEditProperty(repair.property || "");
-    setEditUnit(repair.unit || "");
-    setEditMachineType(repair.machineType || "Washer");
-    setEditNotes(repair.notes || "");
+    setEditForm({
+      barcode: repair.barcode || "",
+      property: repair.property || "",
+      unit: repair.unit || "",
+      machineType: repair.machineType || "Washer",
+      notes: repair.notes || "",
+    });
     setSelectedRepair(null);
   }
 
   function saveEdit() {
-    if (!editBarcode.trim()) {
+    if (!editForm.barcode.trim()) {
       alert("Barcode cannot be blank.");
       return;
     }
 
-    setRepairs(
-      repairs.map((repair) =>
+    setRepairs((current) =>
+      current.map((repair) =>
         repair.id === editingRepair.id
           ? {
               ...repair,
-              barcode: editBarcode.trim(),
-              property: editProperty.trim(),
-              unit: editUnit.trim(),
-              machineType: editMachineType,
-              notes: editNotes.trim(),
-              editedDate: new Date().toLocaleString(),
+              barcode: editForm.barcode.trim(),
+              property: editForm.property.trim(),
+              unit: editForm.unit.trim(),
+              machineType: editForm.machineType,
+              notes: editForm.notes.trim(),
+              editedDate: formatNow(),
             }
           : repair
       )
@@ -324,12 +386,10 @@ export default function App() {
     setEditingRepair(null);
   }
 
-  function exportJSON() {
-    downloadFile(
-      new Blob([JSON.stringify(repairs, null, 2)], {
-        type: "application/json",
-      }),
-      "repair-log-backup.json"
+  function exportBasicBackup() {
+    exportDownload(
+      JSON.stringify(repairs, null, 2),
+      "repair-log-basic-backup.json"
     );
   }
 
@@ -345,15 +405,13 @@ export default function App() {
 
     const backup = {
       version: 1,
-      exportedAt: new Date().toLocaleString(),
+      exportedAt: formatNow(),
       repairs,
       photos,
     };
 
-    downloadFile(
-      new Blob([JSON.stringify(backup, null, 2)], {
-        type: "application/json",
-      }),
+    exportDownload(
+      JSON.stringify(backup, null, 2),
       "repair-log-full-backup-with-photos.json"
     );
   }
@@ -426,26 +484,14 @@ export default function App() {
         .join(",")
     );
 
-    downloadFile(
-      new Blob([[headers.join(","), ...rows].join("\n")], {
-        type: "text/csv",
-      }),
-      "repair-log.csv"
+    exportDownload(
+      [headers.join(","), ...rows].join("\n"),
+      "repair-log.csv",
+      "text/csv"
     );
   }
 
-  function downloadFile(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = filename;
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
-  function importBackup(event) {
+  function importBasicBackup(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -465,7 +511,7 @@ export default function App() {
             "Import this backup? This will add the backup entries to your current list."
           )
         ) {
-          setRepairs([...imported, ...repairs]);
+          setRepairs((current) => [...imported, ...current]);
         }
       } catch {
         alert("Could not read backup file.");
@@ -491,7 +537,40 @@ export default function App() {
     event.target.value = "";
   }
 
-  function modals() {
+  function RepairCard({ repair }) {
+    return (
+      <article className="repair-card">
+        <div className="repair-menu-row">
+          <button className="dots-btn" onClick={() => setSelectedRepair(repair)}>
+            ⋯
+          </button>
+
+          <div>
+            <strong>{repair.barcode}</strong>
+            <p>
+              {repair.machineType}
+              {repair.property && ` • ${repair.property}`}
+              {repair.unit && ` • Unit ${repair.unit}`}
+            </p>
+          </div>
+        </div>
+
+        <p>{repair.date}</p>
+
+        {repair.editedDate && (
+          <p className="edited">Edited: {repair.editedDate}</p>
+        )}
+
+        {repair.notes && <p>{repair.notes}</p>}
+
+        {photoMap[repair.id] && (
+          <img className="repair-photo" src={photoMap[repair.id]} alt="Repair" />
+        )}
+      </article>
+    );
+  }
+
+  function Modals() {
     return (
       <>
         {selectedRepair && (
@@ -520,32 +599,38 @@ export default function App() {
               <label>
                 Barcode
                 <input
-                  value={editBarcode}
-                  onChange={(event) => setEditBarcode(event.target.value)}
+                  value={editForm.barcode}
+                  onChange={(event) =>
+                    updateEditForm("barcode", event.target.value)
+                  }
                 />
               </label>
 
               <label>
                 Property
                 <input
-                  value={editProperty}
-                  onChange={(event) => setEditProperty(event.target.value)}
+                  value={editForm.property}
+                  onChange={(event) =>
+                    updateEditForm("property", event.target.value)
+                  }
                 />
               </label>
 
               <label>
                 Unit
                 <input
-                  value={editUnit}
-                  onChange={(event) => setEditUnit(event.target.value)}
+                  value={editForm.unit}
+                  onChange={(event) => updateEditForm("unit", event.target.value)}
                 />
               </label>
 
               <label>
                 Machine Type
                 <select
-                  value={editMachineType}
-                  onChange={(event) => setEditMachineType(event.target.value)}
+                  value={editForm.machineType}
+                  onChange={(event) =>
+                    updateEditForm("machineType", event.target.value)
+                  }
                 >
                   <option>Washer</option>
                   <option>Dryer</option>
@@ -555,8 +640,10 @@ export default function App() {
               <label>
                 Repair Notes
                 <textarea
-                  value={editNotes}
-                  onChange={(event) => setEditNotes(event.target.value)}
+                  value={editForm.notes}
+                  onChange={(event) =>
+                    updateEditForm("notes", event.target.value)
+                  }
                 />
               </label>
 
@@ -600,44 +687,11 @@ export default function App() {
           {filteredRepairs.length === 0 && <p>No matching repairs found.</p>}
 
           {filteredRepairs.map((repair) => (
-            <div className="repair-card" key={repair.id}>
-              <div className="repair-menu-row">
-                <button
-                  className="dots-btn"
-                  onClick={() => setSelectedRepair(repair)}
-                >
-                  ⋯
-                </button>
-
-                <strong>{repair.barcode}</strong>
-              </div>
-
-              <p>
-                {repair.machineType}
-                {repair.property && ` • ${repair.property}`}
-                {repair.unit && ` • Unit ${repair.unit}`}
-              </p>
-
-              <p>{repair.date}</p>
-
-              {repair.editedDate && (
-                <p className="edited">Edited: {repair.editedDate}</p>
-              )}
-
-              {repair.notes && <p>{repair.notes}</p>}
-
-              {photoMap[repair.id] && (
-                <img
-                  className="repair-photo"
-                  src={photoMap[repair.id]}
-                  alt="Repair"
-                />
-              )}
-            </div>
+            <RepairCard repair={repair} key={repair.id} />
           ))}
         </section>
 
-        {modals()}
+        <Modals />
       </main>
     );
   }
@@ -666,8 +720,8 @@ export default function App() {
         <label>
           Barcode
           <input
-            value={barcode}
-            onChange={(event) => setBarcode(event.target.value)}
+            value={form.barcode}
+            onChange={(event) => updateForm("barcode", event.target.value)}
             placeholder="Scan or type barcode"
           />
         </label>
@@ -697,8 +751,8 @@ export default function App() {
         <label>
           Property
           <input
-            value={property}
-            onChange={(event) => setProperty(event.target.value)}
+            value={form.property}
+            onChange={(event) => updateForm("property", event.target.value)}
             placeholder="Example: Oak Ridge Apartments"
           />
         </label>
@@ -706,8 +760,8 @@ export default function App() {
         <label>
           Unit
           <input
-            value={unit}
-            onChange={(event) => setUnit(event.target.value)}
+            value={form.unit}
+            onChange={(event) => updateForm("unit", event.target.value)}
             placeholder="Example: 204B"
           />
         </label>
@@ -715,8 +769,8 @@ export default function App() {
         <label>
           Machine Type
           <select
-            value={machineType}
-            onChange={(event) => setMachineType(event.target.value)}
+            value={form.machineType}
+            onChange={(event) => updateForm("machineType", event.target.value)}
           >
             <option>Washer</option>
             <option>Dryer</option>
@@ -726,8 +780,8 @@ export default function App() {
         <label>
           Repair Notes
           <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
+            value={form.notes}
+            onChange={(event) => updateForm("notes", event.target.value)}
             placeholder="Example: Replaced drain pump, cleaned lint chute, tested cycle..."
           />
         </label>
@@ -747,9 +801,15 @@ export default function App() {
           <img className="preview" src={photoPreview} alt="Repair preview" />
         )}
 
-        <button className="save-btn" onClick={saveRepair}>
-          Save Repair
-        </button>
+        <div className="button-grid">
+          <button className="secondary-btn" onClick={clearForm}>
+            Clear
+          </button>
+
+          <button className="save-btn" onClick={saveRepair}>
+            Save Repair
+          </button>
+        </div>
       </section>
 
       <section className="card">
@@ -769,7 +829,7 @@ export default function App() {
         {showBackupMenu && (
           <div className="dropdown">
             <button onClick={exportCSV}>Export CSV</button>
-            <button onClick={exportJSON}>Export Basic Backup JSON</button>
+            <button onClick={exportBasicBackup}>Export Basic Backup JSON</button>
             <button onClick={exportFullBackup}>
               Export FULL Backup With Photos
             </button>
@@ -778,7 +838,7 @@ export default function App() {
               ref={importInputRef}
               type="file"
               accept="application/json"
-              onChange={importBackup}
+              onChange={importBasicBackup}
               hidden
             />
 
@@ -801,7 +861,7 @@ export default function App() {
         )}
       </section>
 
-      {modals()}
+      <Modals />
     </main>
   );
 }

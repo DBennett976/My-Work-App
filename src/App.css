@@ -42,7 +42,6 @@ body {
   gap: 14px;
   padding: 16px 0 18px;
   margin-bottom: 8px;
-  background: transparent;
 }
 
 .top-bar h1 {
@@ -53,20 +52,9 @@ body {
   letter-spacing: -1.7px;
 }
 
-.app:not(.dark) .top-bar h1 {
-  color: #111;
-}
-
-.app.dark .top-bar h1 {
-  color: #f5f5f5;
-}
-
 .top-bar p {
   margin: 8px 0 0;
   font-size: 18px;
-}
-
-.app:not(.dark) .top-bar p {
   color: #475467;
 }
 
@@ -165,8 +153,18 @@ button:active {
   color: #061b0c;
 }
 
+.secondary-btn {
+  background: #8e8e93;
+  color: white;
+}
+
 .delete {
   background: #ff453a;
+  color: white;
+}
+
+.cancel-btn {
+  background: #8e8e93;
   color: white;
 }
 
@@ -193,6 +191,12 @@ button:active {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 #reader {
@@ -261,7 +265,7 @@ button:active {
 .repair-menu-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .dots-btn {
@@ -281,7 +285,7 @@ button:active {
   position: fixed;
   inset: 0;
   z-index: 999;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.58);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -306,11 +310,6 @@ button:active {
 .edit-modal {
   max-height: 85dvh;
   overflow-y: auto;
-}
-
-.cancel-btn {
-  background: #8e8e93;
-  color: white;
 }
 
 .edited {
