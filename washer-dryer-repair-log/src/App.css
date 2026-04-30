@@ -1,0 +1,190 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #eef1f5;
+  color: #111;
+}
+
+.app {
+  max-width: 750px;
+  margin: auto;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.dark {
+  background: #121212;
+  color: #f5f5f5;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.top-bar h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.top-bar p {
+  margin: 4px 0 0;
+  color: #666;
+}
+
+.dark .top-bar p {
+  color: #bbb;
+}
+
+.card,
+.repair-card {
+  background: white;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.09);
+}
+
+.dark .card,
+.dark .repair-card {
+  background: #1f1f1f;
+  box-shadow: none;
+}
+
+label {
+  display: block;
+  margin-top: 14px;
+  font-weight: bold;
+}
+
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background: #2b2b2b;
+  color: white;
+  border: 1px solid #555;
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+button {
+  background: #111;
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 14px;
+}
+
+.dark button {
+  background: #e8e8e8;
+  color: #111;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+.scan-btn {
+  font-size: 20px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.save-btn {
+  background: #056b35;
+}
+
+.delete {
+  background: #b00020;
+}
+
+.small-btn {
+  width: auto;
+  padding: 10px 14px;
+  margin-top: 0;
+}
+
+#reader {
+  margin-top: 16px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.previous-box {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff3cd;
+  border: 1px solid #ffdf7e;
+  color: #111;
+}
+
+.previous-box h3 {
+  margin-top: 0;
+}
+
+.previous-repair {
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.count {
+  color: #555;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.dark .count {
+  color: #bbb;
+}
+
+.preview,
+.repair-photo {
+  width: 100%;
+  max-height: 350px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-top: 12px;
+}
+
+.repair-card p {
+  margin: 6px 0;
+}
+
+.menu-toggle {
+  font-size: 16px;
+  text-align: left;
+}
+
+.dropdown {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
