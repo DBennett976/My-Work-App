@@ -84,6 +84,7 @@ export default function App() {
 
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("repairLogs");
@@ -183,12 +184,34 @@ export default function App() {
     );
   }, [repairs, search]);
 
+  async function stopScanner() {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch {
+        // Ignore scanner stop errors
+      }
+
+      scannerRef.current = null;
+    }
+
+    setScanning(false);
+    setScanMessage("");
+  }
+
   async function startScanner() {
+    if (scanning) {
+      await stopScanner();
+      return;
+    }
+
     setScanning(true);
     setScanMessage("Point camera at barcode...");
 
     setTimeout(async () => {
       const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
 
       try {
         await scanner.start(
@@ -227,6 +250,8 @@ export default function App() {
               // Ignore scanner stop errors
             }
 
+            scannerRef.current = null;
+
             setTimeout(() => {
               setScanning(false);
               setScanMessage("");
@@ -237,6 +262,7 @@ export default function App() {
         alert("Camera error. Try manual entry instead.");
         setScanning(false);
         setScanMessage("");
+        scannerRef.current = null;
       }
     }, 100);
   }
@@ -393,8 +419,8 @@ export default function App() {
       </header>
 
       <section className="card">
-        <button className="scan-btn" onClick={startScanner} disabled={scanning}>
-          {scanning ? "Scanning..." : "Scan Barcode"}
+        <button className="scan-btn" onClick={startScanner}>
+          {scanning ? "Stop Scanning" : "Scan Barcode"}
         </button>
 
         {scanning && <div id="reader"></div>}
