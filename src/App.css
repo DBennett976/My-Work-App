@@ -257,3 +257,63 @@ button:active {
   margin: 7px 0;
   line-height: 1.35;
 }
+
+.repair-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dots-btn {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 28px;
+  line-height: 1;
+  background: #3a3a3c;
+  color: white;
+  flex-shrink: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: #f2f2f7;
+  color: #111;
+  border-radius: 28px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.app.dark .modal {
+  background: #1f1f1f;
+  color: white;
+}
+
+.edit-modal {
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+
+.cancel-btn {
+  background: #8e8e93;
+  color: white;
+}
+
+.edited {
+  color: #8e8e93;
+  font-size: 14px;
+}

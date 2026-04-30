@@ -12,7 +12,6 @@ function openPhotoDB() {
 
     request.onupgradeneeded = () => {
       const db = request.result;
-
       if (!db.objectStoreNames.contains(PHOTO_STORE)) {
         db.createObjectStore(PHOTO_STORE);
       }
@@ -28,10 +27,7 @@ async function savePhotoToDB(id, photoData) {
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(PHOTO_STORE, "readwrite");
-    const store = transaction.objectStore(PHOTO_STORE);
-
-    store.put(photoData, id);
-
+    transaction.objectStore(PHOTO_STORE).put(photoData, id);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
@@ -41,10 +37,7 @@ async function getPhotoFromDB(id) {
   const db = await openPhotoDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(PHOTO_STORE, "readonly");
-    const store = transaction.objectStore(PHOTO_STORE);
-    const request = store.get(id);
-
+    const request = db.transaction(PHOTO_STORE, "readonly").objectStore(PHOTO_STORE).get(id);
     request.onsuccess = () => resolve(request.result || "");
     request.onerror = () => reject(request.error);
   });
@@ -55,10 +48,7 @@ async function deletePhotoFromDB(id) {
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(PHOTO_STORE, "readwrite");
-    const store = transaction.objectStore(PHOTO_STORE);
-
-    store.delete(id);
-
+    transaction.objectStore(PHOTO_STORE).delete(id);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
@@ -82,6 +72,14 @@ export default function App() {
   const [scanMessage, setScanMessage] = useState("");
   const [showBackupMenu, setShowBackupMenu] = useState(false);
 
+  const [selectedRepair, setSelectedRepair] = useState(null);
+  const [editingRepair, setEditingRepair] = useState(null);
+  const [editBarcode, setEditBarcode] = useState("");
+  const [editProperty, setEditProperty] = useState("");
+  const [editUnit, setEditUnit] = useState("");
+  const [editMachineType, setEditMachineType] = useState("Washer");
+  const [editNotes, setEditNotes] = useState("");
+
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
   const scannerRef = useRef(null);
@@ -90,13 +88,8 @@ export default function App() {
     const saved = localStorage.getItem("repairLogs");
     const savedDark = localStorage.getItem("darkMode");
 
-    if (saved) {
-      setRepairs(JSON.parse(saved));
-    }
-
-    if (savedDark) {
-      setDarkMode(JSON.parse(savedDark));
-    }
+    if (saved) setRepairs(JSON.parse(saved));
+    if (savedDark) setDarkMode(JSON.parse(savedDark));
 
     setLoaded(true);
   }, []);
@@ -119,26 +112,18 @@ export default function App() {
       for (const repair of repairs) {
         if (repair.photoId) {
           const photo = await getPhotoFromDB(repair.photoId);
-
-          if (photo) {
-            nextPhotoMap[repair.id] = photo;
-          }
+          if (photo) nextPhotoMap[repair.id] = photo;
         }
       }
 
       setPhotoMap(nextPhotoMap);
     }
 
-    if (repairs.length > 0) {
-      loadPhotos();
-    } else {
-      setPhotoMap({});
-    }
+    repairs.length > 0 ? loadPhotos() : setPhotoMap({});
   }, [repairs]);
 
   const previousRepairs = useMemo(() => {
     const currentBarcode = barcode.trim().toLowerCase();
-
     if (!currentBarcode) return [];
 
     return repairs.filter(
@@ -150,23 +135,14 @@ export default function App() {
     if (previousRepairs.length > 0 && barcode.trim()) {
       const lastRepair = previousRepairs[0];
 
-      if (!property && lastRepair.property) {
-        setProperty(lastRepair.property);
-      }
-
-      if (!unit && lastRepair.unit) {
-        setUnit(lastRepair.unit);
-      }
-
-      if (lastRepair.machineType) {
-        setMachineType(lastRepair.machineType);
-      }
+      if (!property && lastRepair.property) setProperty(lastRepair.property);
+      if (!unit && lastRepair.unit) setUnit(lastRepair.unit);
+      if (lastRepair.machineType) setMachineType(lastRepair.machineType);
     }
   }, [barcode, previousRepairs, property, unit]);
 
   const filteredRepairs = useMemo(() => {
     const text = search.toLowerCase().trim();
-
     if (!text) return repairs;
 
     return repairs.filter((repair) =>
@@ -189,9 +165,7 @@ export default function App() {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch {
-        // Ignore scanner stop errors
-      }
+      } catch {}
 
       scannerRef.current = null;
     }
@@ -218,10 +192,7 @@ export default function App() {
           { facingMode: "environment" },
           {
             fps: 15,
-            qrbox: {
-              width: 320,
-              height: 160,
-            },
+            qrbox: { width: 320, height: 160 },
             aspectRatio: 1.777,
             formatsToSupport: [
               Html5QrcodeSupportedFormats.CODE_128,
@@ -239,16 +210,12 @@ export default function App() {
             setBarcode(decodedText);
             setScanMessage("Scanned successfully!");
 
-            if (navigator.vibrate) {
-              navigator.vibrate(150);
-            }
+            if (navigator.vibrate) navigator.vibrate(150);
 
             try {
               await scanner.stop();
               await scanner.clear();
-            } catch {
-              // Ignore scanner stop errors
-            }
+            } catch {}
 
             scannerRef.current = null;
 
@@ -276,9 +243,7 @@ export default function App() {
     const id = crypto.randomUUID();
     const photoId = photoFileData ? `photo-${id}` : "";
 
-    if (photoFileData) {
-      await savePhotoToDB(photoId, photoFileData);
-    }
+    if (photoFileData) await savePhotoToDB(photoId, photoFileData);
 
     const entry = {
       id,
@@ -306,24 +271,58 @@ export default function App() {
     setPhotoFileData("");
   }
 
-  async function deleteRepair(id, photoId) {
-    if (photoId) {
-      await deletePhotoFromDB(photoId);
-    }
+  async function deleteRepair(repair) {
+    if (repair.photoId) await deletePhotoFromDB(repair.photoId);
 
-    setRepairs(repairs.filter((repair) => repair.id !== id));
+    setRepairs(repairs.filter((item) => item.id !== repair.id));
 
     const updatedPhotoMap = { ...photoMap };
-    delete updatedPhotoMap[id];
+    delete updatedPhotoMap[repair.id];
     setPhotoMap(updatedPhotoMap);
+
+    setSelectedRepair(null);
+  }
+
+  function openEdit(repair) {
+    setEditingRepair(repair);
+    setEditBarcode(repair.barcode || "");
+    setEditProperty(repair.property || "");
+    setEditUnit(repair.unit || "");
+    setEditMachineType(repair.machineType || "Washer");
+    setEditNotes(repair.notes || "");
+    setSelectedRepair(null);
+  }
+
+  function saveEdit() {
+    if (!editBarcode.trim()) {
+      alert("Barcode cannot be blank.");
+      return;
+    }
+
+    setRepairs(
+      repairs.map((repair) =>
+        repair.id === editingRepair.id
+          ? {
+              ...repair,
+              barcode: editBarcode.trim(),
+              property: editProperty.trim(),
+              unit: editUnit.trim(),
+              machineType: editMachineType,
+              notes: editNotes.trim(),
+              editedDate: new Date().toLocaleString(),
+            }
+          : repair
+      )
+    );
+
+    setEditingRepair(null);
   }
 
   function exportJSON() {
-    const blob = new Blob([JSON.stringify(repairs, null, 2)], {
-      type: "application/json",
-    });
-
-    downloadFile(blob, "repair-log-backup.json");
+    downloadFile(
+      new Blob([JSON.stringify(repairs, null, 2)], { type: "application/json" }),
+      "repair-log-backup.json"
+    );
   }
 
   function exportCSV() {
@@ -342,10 +341,7 @@ export default function App() {
         .join(",")
     );
 
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-
-    downloadFile(blob, "repair-log.csv");
+    downloadFile(new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" }), "repair-log.csv");
   }
 
   function downloadFile(blob, filename) {
@@ -361,7 +357,6 @@ export default function App() {
 
   function importBackup(event) {
     const file = event.target.files[0];
-
     if (!file) return;
 
     const reader = new FileReader();
@@ -375,11 +370,7 @@ export default function App() {
           return;
         }
 
-        const confirmImport = confirm(
-          "Import this backup? This will add the backup entries to your current list."
-        );
-
-        if (confirmImport) {
+        if (confirm("Import this backup? This will add the backup entries to your current list.")) {
           setRepairs([...imported, ...repairs]);
         }
       } catch {
@@ -392,7 +383,6 @@ export default function App() {
 
   function handlePhoto(event) {
     const file = event.target.files[0];
-
     if (!file) return;
 
     const reader = new FileReader();
@@ -424,7 +414,6 @@ export default function App() {
         </button>
 
         {scanning && <div id="reader"></div>}
-
         {scanMessage && <p className="scan-message">{scanMessage}</p>}
 
         <label>
@@ -439,7 +428,6 @@ export default function App() {
         {previousRepairs.length > 0 && (
           <div className="previous-box">
             <h3>Previous Repairs Found</h3>
-
             <p>
               This machine has {previousRepairs.length} previous repair
               {previousRepairs.length === 1 ? "" : "s"}.
@@ -448,13 +436,11 @@ export default function App() {
             {previousRepairs.map((repair) => (
               <div className="previous-repair" key={repair.id}>
                 <strong>{repair.date}</strong>
-
                 <p>
                   {repair.machineType}
                   {repair.property && ` • ${repair.property}`}
                   {repair.unit && ` • Unit ${repair.unit}`}
                 </p>
-
                 {repair.notes && <p>{repair.notes}</p>}
               </div>
             ))}
@@ -564,7 +550,16 @@ export default function App() {
 
         {filteredRepairs.map((repair) => (
           <div className="repair-card" key={repair.id}>
-            <strong>{repair.barcode}</strong>
+            <div className="repair-menu-row">
+              <button
+                className="dots-btn"
+                onClick={() => setSelectedRepair(repair)}
+              >
+                ⋯
+              </button>
+
+              <strong>{repair.barcode}</strong>
+            </div>
 
             <p>
               {repair.machineType}
@@ -573,6 +568,8 @@ export default function App() {
             </p>
 
             <p>{repair.date}</p>
+
+            {repair.editedDate && <p className="edited">Edited: {repair.editedDate}</p>}
 
             {repair.notes && <p>{repair.notes}</p>}
 
@@ -583,16 +580,74 @@ export default function App() {
                 alt="Repair"
               />
             )}
-
-            <button
-              className="delete"
-              onClick={() => deleteRepair(repair.id, repair.photoId)}
-            >
-              Delete
-            </button>
           </div>
         ))}
       </section>
+
+      {selectedRepair && (
+        <div className="modal-backdrop" onClick={() => setSelectedRepair(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2>Repair Options</h2>
+
+            <button onClick={() => openEdit(selectedRepair)}>Edit</button>
+
+            <button className="delete" onClick={() => deleteRepair(selectedRepair)}>
+              Delete
+            </button>
+
+            <button className="cancel-btn" onClick={() => setSelectedRepair(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editingRepair && (
+        <div className="modal-backdrop">
+          <div className="modal edit-modal">
+            <h2>Edit Repair</h2>
+
+            <label>
+              Barcode
+              <input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} />
+            </label>
+
+            <label>
+              Property
+              <input value={editProperty} onChange={(e) => setEditProperty(e.target.value)} />
+            </label>
+
+            <label>
+              Unit
+              <input value={editUnit} onChange={(e) => setEditUnit(e.target.value)} />
+            </label>
+
+            <label>
+              Machine Type
+              <select
+                value={editMachineType}
+                onChange={(e) => setEditMachineType(e.target.value)}
+              >
+                <option>Washer</option>
+                <option>Dryer</option>
+              </select>
+            </label>
+
+            <label>
+              Repair Notes
+              <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+            </label>
+
+            <button className="save-btn" onClick={saveEdit}>
+              Save Changes
+            </button>
+
+            <button className="cancel-btn" onClick={() => setEditingRepair(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
