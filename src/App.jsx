@@ -75,6 +75,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
   const [showBackupMenu, setShowBackupMenu] = useState(false);
+  const [showHistoryPage, setShowHistoryPage] = useState(false);
 
   const [selectedRepair, setSelectedRepair] = useState(null);
   const [editingRepair, setEditingRepair] = useState(null);
@@ -170,9 +171,7 @@ export default function App() {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch {
-        // Ignore stop errors
-      }
+      } catch {}
 
       scannerRef.current = null;
     }
@@ -222,9 +221,7 @@ export default function App() {
             try {
               await scanner.stop();
               await scanner.clear();
-            } catch {
-              // Ignore stop errors
-            }
+            } catch {}
 
             scannerRef.current = null;
 
@@ -494,6 +491,157 @@ export default function App() {
     event.target.value = "";
   }
 
+  function modals() {
+    return (
+      <>
+        {selectedRepair && (
+          <div className="modal-backdrop" onClick={() => setSelectedRepair(null)}>
+            <div className="modal" onClick={(event) => event.stopPropagation()}>
+              <h2>Repair Options</h2>
+
+              <button onClick={() => openEdit(selectedRepair)}>Edit</button>
+
+              <button className="delete" onClick={() => deleteRepair(selectedRepair)}>
+                Delete
+              </button>
+
+              <button className="cancel-btn" onClick={() => setSelectedRepair(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {editingRepair && (
+          <div className="modal-backdrop">
+            <div className="modal edit-modal">
+              <h2>Edit Repair</h2>
+
+              <label>
+                Barcode
+                <input
+                  value={editBarcode}
+                  onChange={(event) => setEditBarcode(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Property
+                <input
+                  value={editProperty}
+                  onChange={(event) => setEditProperty(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Unit
+                <input
+                  value={editUnit}
+                  onChange={(event) => setEditUnit(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Machine Type
+                <select
+                  value={editMachineType}
+                  onChange={(event) => setEditMachineType(event.target.value)}
+                >
+                  <option>Washer</option>
+                  <option>Dryer</option>
+                </select>
+              </label>
+
+              <label>
+                Repair Notes
+                <textarea
+                  value={editNotes}
+                  onChange={(event) => setEditNotes(event.target.value)}
+                />
+              </label>
+
+              <button className="save-btn" onClick={saveEdit}>
+                Save Changes
+              </button>
+
+              <button className="cancel-btn" onClick={() => setEditingRepair(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (showHistoryPage) {
+    return (
+      <main className={darkMode ? "app dark" : "app"}>
+        <section className="history-page">
+          <button
+            className="close-page-btn"
+            onClick={() => setShowHistoryPage(false)}
+          >
+            ×
+          </button>
+
+          <h1>Service History</h1>
+
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search barcode, property, unit, notes..."
+          />
+
+          <p className="count">
+            Showing {filteredRepairs.length} of {repairs.length} repairs
+          </p>
+
+          {filteredRepairs.length === 0 && <p>No matching repairs found.</p>}
+
+          {filteredRepairs.map((repair) => (
+            <div className="repair-card" key={repair.id}>
+              <div className="repair-menu-row">
+                <button
+                  className="dots-btn"
+                  onClick={() => setSelectedRepair(repair)}
+                >
+                  ⋯
+                </button>
+
+                <strong>{repair.barcode}</strong>
+              </div>
+
+              <p>
+                {repair.machineType}
+                {repair.property && ` • ${repair.property}`}
+                {repair.unit && ` • Unit ${repair.unit}`}
+              </p>
+
+              <p>{repair.date}</p>
+
+              {repair.editedDate && (
+                <p className="edited">Edited: {repair.editedDate}</p>
+              )}
+
+              {repair.notes && <p>{repair.notes}</p>}
+
+              {photoMap[repair.id] && (
+                <img
+                  className="repair-photo"
+                  src={photoMap[repair.id]}
+                  alt="Repair"
+                />
+              )}
+            </div>
+          ))}
+        </section>
+
+        {modals()}
+      </main>
+    );
+  }
+
   return (
     <main className={darkMode ? "app dark" : "app"}>
       <header className="top-bar">
@@ -605,6 +753,12 @@ export default function App() {
       </section>
 
       <section className="card">
+        <button onClick={() => setShowHistoryPage(true)}>
+          View Service History
+        </button>
+      </section>
+
+      <section className="card">
         <button
           className="menu-toggle"
           onClick={() => setShowBackupMenu(!showBackupMenu)}
@@ -647,135 +801,7 @@ export default function App() {
         )}
       </section>
 
-      <section>
-        <h2>History</h2>
-
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search barcode, property, unit, notes..."
-        />
-
-        <p className="count">
-          Showing {filteredRepairs.length} of {repairs.length} repairs
-        </p>
-
-        {filteredRepairs.length === 0 && <p>No matching repairs found.</p>}
-
-        {filteredRepairs.map((repair) => (
-          <div className="repair-card" key={repair.id}>
-            <div className="repair-menu-row">
-              <button
-                className="dots-btn"
-                onClick={() => setSelectedRepair(repair)}
-              >
-                ⋯
-              </button>
-
-              <strong>{repair.barcode}</strong>
-            </div>
-
-            <p>
-              {repair.machineType}
-              {repair.property && ` • ${repair.property}`}
-              {repair.unit && ` • Unit ${repair.unit}`}
-            </p>
-
-            <p>{repair.date}</p>
-
-            {repair.editedDate && (
-              <p className="edited">Edited: {repair.editedDate}</p>
-            )}
-
-            {repair.notes && <p>{repair.notes}</p>}
-
-            {photoMap[repair.id] && (
-              <img
-                className="repair-photo"
-                src={photoMap[repair.id]}
-                alt="Repair"
-              />
-            )}
-          </div>
-        ))}
-      </section>
-
-      {selectedRepair && (
-        <div className="modal-backdrop" onClick={() => setSelectedRepair(null)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2>Repair Options</h2>
-
-            <button onClick={() => openEdit(selectedRepair)}>Edit</button>
-
-            <button className="delete" onClick={() => deleteRepair(selectedRepair)}>
-              Delete
-            </button>
-
-            <button className="cancel-btn" onClick={() => setSelectedRepair(null)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {editingRepair && (
-        <div className="modal-backdrop">
-          <div className="modal edit-modal">
-            <h2>Edit Repair</h2>
-
-            <label>
-              Barcode
-              <input
-                value={editBarcode}
-                onChange={(event) => setEditBarcode(event.target.value)}
-              />
-            </label>
-
-            <label>
-              Property
-              <input
-                value={editProperty}
-                onChange={(event) => setEditProperty(event.target.value)}
-              />
-            </label>
-
-            <label>
-              Unit
-              <input
-                value={editUnit}
-                onChange={(event) => setEditUnit(event.target.value)}
-              />
-            </label>
-
-            <label>
-              Machine Type
-              <select
-                value={editMachineType}
-                onChange={(event) => setEditMachineType(event.target.value)}
-              >
-                <option>Washer</option>
-                <option>Dryer</option>
-              </select>
-            </label>
-
-            <label>
-              Repair Notes
-              <textarea
-                value={editNotes}
-                onChange={(event) => setEditNotes(event.target.value)}
-              />
-            </label>
-
-            <button className="save-btn" onClick={saveEdit}>
-              Save Changes
-            </button>
-
-            <button className="cancel-btn" onClick={() => setEditingRepair(null)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {modals()}
     </main>
   );
 }

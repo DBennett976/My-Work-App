@@ -317,3 +317,30 @@ button:active {
   color: #8e8e93;
   font-size: 14px;
 }
+
+.history-page {
+  position: relative;
+  padding-top: 10px;
+}
+
+.history-page h1 {
+  margin: 52px 0 18px;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.close-page-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 34px;
+  line-height: 1;
+  background: #3a3a3c;
+  color: white;
+}
