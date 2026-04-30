@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import "./App.css";
 
 const DB_NAME = "RepairLogPhotoDB";
@@ -79,6 +79,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [darkMode, setDarkMode] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
   const [showBackupMenu, setShowBackupMenu] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -184,6 +185,7 @@ export default function App() {
 
   async function startScanner() {
     setScanning(true);
+    setScanMessage("Point camera at barcode...");
 
     setTimeout(async () => {
       const scanner = new Html5Qrcode("reader");
@@ -191,22 +193,50 @@ export default function App() {
       try {
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: 250 },
+          {
+            fps: 15,
+            qrbox: {
+              width: 320,
+              height: 160,
+            },
+            aspectRatio: 1.777,
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.ITF,
+              Html5QrcodeSupportedFormats.QR_CODE,
+              Html5QrcodeSupportedFormats.DATA_MATRIX,
+            ],
+          },
           async (decodedText) => {
             setBarcode(decodedText);
+            setScanMessage("Scanned successfully!");
+
+            if (navigator.vibrate) {
+              navigator.vibrate(150);
+            }
 
             try {
               await scanner.stop();
+              await scanner.clear();
             } catch {
               // Ignore scanner stop errors
             }
 
-            setScanning(false);
+            setTimeout(() => {
+              setScanning(false);
+              setScanMessage("");
+            }, 700);
           }
         );
       } catch {
         alert("Camera error. Try manual entry instead.");
         setScanning(false);
+        setScanMessage("");
       }
     }, 100);
   }
@@ -368,6 +398,8 @@ export default function App() {
         </button>
 
         {scanning && <div id="reader"></div>}
+
+        {scanMessage && <p className="scan-message">{scanMessage}</p>}
 
         <label>
           Barcode
