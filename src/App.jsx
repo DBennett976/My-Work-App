@@ -88,6 +88,23 @@ function formatNow() {
   return new Date().toLocaleString();
 }
 
+function toDateTimeLocal(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60000);
+
+  return localDate.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value) {
+  if (!value) return formatNow();
+  return new Date(value).toLocaleString();
+}
+
 export default function App() {
   const [repairs, setRepairs] = useState([]);
   const [photoMap, setPhotoMap] = useState({});
@@ -123,7 +140,10 @@ export default function App() {
     notes: "",
   });
 
-  const fileInputRef = useRef(null);
+  const [editDate, setEditDate] = useState("");
+
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const importInputRef = useRef(null);
   const fullRestoreInputRef = useRef(null);
   const scannerRef = useRef(null);
@@ -358,6 +378,7 @@ export default function App() {
       machineType: repair.machineType || "Washer",
       notes: repair.notes || "",
     });
+    setEditDate(toDateTimeLocal(repair.date));
     setSelectedRepair(null);
   }
 
@@ -377,6 +398,7 @@ export default function App() {
               unit: editForm.unit.trim(),
               machineType: editForm.machineType,
               notes: editForm.notes.trim(),
+              date: fromDateTimeLocal(editDate),
               editedDate: formatNow(),
             }
           : repair
@@ -638,6 +660,15 @@ export default function App() {
               </label>
 
               <label>
+                Date & Time
+                <input
+                  type="datetime-local"
+                  value={editDate}
+                  onChange={(event) => setEditDate(event.target.value)}
+                />
+              </label>
+
+              <label>
                 Repair Notes
                 <textarea
                   value={editForm.notes}
@@ -787,7 +818,7 @@ export default function App() {
         </label>
 
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
@@ -795,7 +826,26 @@ export default function App() {
           hidden
         />
 
-        <button onClick={() => fileInputRef.current.click()}>Add Photo</button>
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhoto}
+          hidden
+        />
+
+        <div className="button-grid">
+          <button onClick={() => cameraInputRef.current.click()}>
+            Take Photo
+          </button>
+
+          <button
+            className="secondary-btn"
+            onClick={() => galleryInputRef.current.click()}
+          >
+            Choose Photo
+          </button>
+        </div>
 
         {photoPreview && (
           <img className="preview" src={photoPreview} alt="Repair preview" />
