@@ -938,86 +938,90 @@ export default function App() {
   }
 
   function BackupPage() {
-    return (
-      <>
-        <header className="top-bar">
-          <div>
-            <h1>Backup</h1>
-            <p>Protect your repair logs and photos.</p>
-          </div>
-        </header>
+  return (
+    <>
+      <header className="top-bar">
+        <div>
+          <h1>Backup</h1>
+          <p>Protect your repair logs and photos.</p>
+        </div>
+      </header>
 
-        <section className="card">
-          <div className="section-title">
-            <span>Safe</span>
-            <h2>Full Backup</h2>
-          </div>
+      <section className="card">
+        <div className="section-title">
+          <span>Safe</span>
+          <h2>Full Backup</h2>
+        </div>
 
-          <p className="helper-text">
-            Use this before updating the app or removing it from your Home Screen.
-            This backup includes photos.
-          </p>
+        <p className="helper-text">
+          Use this before updating the app. This backup includes repairs and photos.
+        </p>
 
-          <button onClick={exportFullBackup}>
-            Export FULL Backup With Photos
-          </button>
+        <button onClick={exportFullBackup}>
+          Export FULL Backup With Photos
+        </button>
 
-          <input
-            ref={fullRestoreInputRef}
-            type="file"
-            accept="application/json"
-            onChange={restoreFullBackup}
-            hidden
-          />
+        <input
+          ref={fullRestoreInputRef}
+          type="file"
+          accept="application/json"
+          onChange={restoreFullBackup}
+          hidden
+        />
 
-          <button
-            className="secondary-btn"
-            onClick={() => fullRestoreInputRef.current.click()}
-          >
-            Restore FULL Backup With Photos
-          </button>
-        </section>
+        <button
+          className="secondary-btn"
+          onClick={() => fullRestoreInputRef.current.click()}
+        >
+          Restore FULL Backup With Photos
+        </button>
+      </section>
 
-        <section className="card">
-          <div className="section-title">
-            <span>CSV</span>
-            <h2>Reports</h2>
-          </div>
+      <section className="card">
+        <div className="section-title">
+          <span>CSV</span>
+          <h2>Export Report</h2>
+        </div>
 
-          <button onClick={exportCSV}>Export CSV</button>
-        </section>
+        <p className="helper-text">
+          Export a spreadsheet-style file without photos.
+        </p>
 
-        <section className="card">
-          <button
-            className="menu-toggle"
-            onClick={() => setShowBackupMenu(!showBackupMenu)}
-          >
-            Advanced Backup {showBackupMenu ? "▲" : "▼"}
-          </button>
+        <button onClick={exportCSV}>Export CSV</button>
+      </section>
 
-          {showBackupMenu && (
-            <div className="dropdown">
-              <button onClick={exportBasicBackup}>
-                Export Basic Backup JSON
-              </button>
+      <section className="card">
+        <div className="section-title">
+          <span>JSON</span>
+          <h2>Basic Backup</h2>
+        </div>
 
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json"
-                onChange={importBasicBackup}
-                hidden
-              />
+        <p className="helper-text">
+          Basic backup does not include photos.
+        </p>
 
-              <button onClick={() => importInputRef.current.click()}>
-                Import Basic Backup JSON
-              </button>
-            </div>
-          )}
-        </section>
-      </>
-    );
-  }
+        <button onClick={exportBasicBackup}>
+          Export Basic Backup JSON
+        </button>
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json"
+          onChange={importBasicBackup}
+          hidden
+        />
+
+        <button
+          className="secondary-btn"
+          onClick={() => importInputRef.current.click()}
+        >
+          Import Basic Backup JSON
+        </button>
+      </section>
+    </>
+  );
+}
 
   function SettingsPage() {
     return (
